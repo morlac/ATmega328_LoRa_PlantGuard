@@ -18,17 +18,18 @@
 
 #define LoRaPlaNet_Protocol_Version 2
 
-#define I2C_ADC_ADDRESS 0x4A
-
 #define SERIAL_BAUDRATE 38400
 
 #define SLEEP_SECONDS 600 // must be a multiple of 8
 
-#define SENSOR_POWER_PIN 9
+#define SENSOR_POWER_PIN 5
 #define SENSOR_POWER_ON LOW
 #define SENSOR_POWER_OFF HIGH
 
+#define I2C_ADC_ADDRESS 0x4A
+
 ADS1115_WE adc(I2C_ADC_ADDRESS);
+#define V_SENSOR_MAX 3000
 
 #define I2C_BME_ADDRESS 0x76
 #define TINY_BME280_I2C
@@ -103,7 +104,7 @@ static int wakeup_counter = 0;
 const lmic_pinmap lmic_pins = {
 		.nss = 10,
 		.rxtx = LMIC_UNUSED_PIN,
-		.rst = 5,
+		.rst = 9,
 		.dio = {2, 3, LMIC_UNUSED_PIN},
 };
 
@@ -306,6 +307,10 @@ void do_send(osjob_t* j) {
       voltage[2] = readChannel(ADS1115_COMP_2_GND);
       voltage[3] = readChannel(ADS1115_COMP_3_GND);
 
+      for (int i = 0; i < 4; i++) {
+        voltage[i] = (voltage[i] < V_SENSOR_MAX ? voltage[i] : 0);
+      }
+
       digitalWrite(SENSOR_POWER_PIN, SENSOR_POWER_OFF);
       pinMode(SENSOR_POWER_PIN, INPUT_PULLUP);
 
@@ -339,7 +344,6 @@ void do_send(osjob_t* j) {
 
       for (int i = 0; i < 4; i++) {
         uint32_t mapped = map(voltage[i], sensor_min[i], sensor_max[i], 100, 0);
-        
         Serial << i << F(": ") << mapped << F(",  ");
 
         lpp.addPercentage      (channel++, mapped);
@@ -501,7 +505,7 @@ void setup(void) {
 	// frequency is not configured here.
 
   // Disable link check validation
-  LMIC_setLinkCheckMode(true);
+  LMIC_setLinkCheckMode(false);
 
   LMIC_setAdrMode(true);
 
