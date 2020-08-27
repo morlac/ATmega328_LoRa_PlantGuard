@@ -508,13 +508,13 @@ void setup(void) {
   // Disable link check validation
   LMIC_setLinkCheckMode(false);
 
-  LMIC_setAdrMode(true);
+  LMIC_setAdrMode(false);
 
   // TTN uses SF9 for its RX2 window.
   LMIC.dn2Dr = DR_SF9;
 
   // Set data rate and transmit power for uplink (note: txpow seems to be ignored by the library)
-	//LMIC_setDrTxpow(DR_SF7, 14); // should only be used if data rate adaption is disabled
+	LMIC_setDrTxpow(DR_SF7, 14); // should only be used if data rate adaption is disabled
 
   // Use with Arduino Pro Mini ATmega328P 3.3V 8 MHz
   // Let LMIC compensate for +/- 1% clock error
