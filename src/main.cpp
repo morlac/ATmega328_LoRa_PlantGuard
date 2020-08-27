@@ -256,107 +256,108 @@ long readVcc(void) {
  * 
  */
 void do_send(osjob_t* j) {
-    // Check if there is not a current TX/RX job running
-    if (LMIC.opmode & OP_TXRXPEND) {
-      Serial << (F("OP_TXRXPEND, not sending")) << endl;
-    } else {
-      float voltage[4];// = {0.0};
+  Serial << (os_getTime()) << F(": ");
 
-      uint16_t sensor_min[4];// = {0};
-      uint16_t sensor_max[4];// = {0};
+  // Check if there is not a current TX/RX job running
+  if (LMIC.opmode & OP_TXRXPEND) {
+    Serial << (F("OP_TXRXPEND, not sending")) << endl;
+  } else {
+    float voltage[4];// = {0.0};
+
+    uint16_t sensor_min[4];// = {0};
+    uint16_t sensor_max[4];// = {0};
 
 #ifdef USE_EEPROM
-      eeprom_read_block((void*) sensor_min, (const void*) ee_sensor_min, sizeof(sensor_min));
-      eeprom_read_block((void*) sensor_max, (const void*) ee_sensor_max, sizeof(sensor_max));
+    eeprom_read_block((void*) sensor_min, (const void*) ee_sensor_min, sizeof(sensor_min));
+    eeprom_read_block((void*) sensor_max, (const void*) ee_sensor_max, sizeof(sensor_max));
 #else
-      memcpy_P(sensor_min, ee_sensor_min, sizeof(ee_sensor_min);
-      memcpy_P(sensor_max, ee_sensor_max, sizeof(ee_sensor_max));
+    memcpy_P(sensor_min, ee_sensor_min, sizeof(ee_sensor_min);
+    memcpy_P(sensor_max, ee_sensor_max, sizeof(ee_sensor_max));
 #endif
 
-      Serial << F("min: ");
+    Serial << F("min: ");
 
-      for (int i = 0; i < 4; i++) {
-        Serial << i << F(": ") << sensor_min[i] << (i < 3 ? F(", ") : F("\n"));
-      }
-
-      Serial << F("max: ");
-
-      for (int i = 0; i < 4; i++) {
-        Serial << i << F(": ") << sensor_max[i] << (i < 3 ? F(", ") : F("\n"));
-      }
-
-      long vcc = readVcc();
-
-      pinMode(SENSOR_POWER_PIN, OUTPUT);
-      digitalWrite(SENSOR_POWER_PIN, SENSOR_POWER_ON);
-
-      Wire.begin();
-
-      bme_init();
-
-      adc_init();
-
-      delay(200); // ensure Sensors stabilized level
-
-      int32_t temperature = bme.readFixedTempC();
-      uint32_t humidity = bme.readFixedHumidity();
-      uint32_t barometric_pressure = bme.readFixedPressure();
-
-      voltage[0] = readChannel(ADS1115_COMP_0_GND);
-      voltage[1] = readChannel(ADS1115_COMP_1_GND);
-      voltage[2] = readChannel(ADS1115_COMP_2_GND);
-      voltage[3] = readChannel(ADS1115_COMP_3_GND);
-
-      for (int i = 0; i < 4; i++) {
-        voltage[i] = (voltage[i] < V_SENSOR_MAX ? voltage[i] : 0);
-      }
-
-      digitalWrite(SENSOR_POWER_PIN, SENSOR_POWER_OFF);
-      pinMode(SENSOR_POWER_PIN, INPUT_PULLUP);
-
-      Wire.end();
-
-      for (int i = 0; i < 4; i++) {
-        Serial << i << F(": ") << voltage[i] << F(",  ");
-        Serial.flush();
-      }
-
-      Serial << F("Vcc: ") << vcc;
-      Serial << F(",   Deg C: ") << (temperature / 100.0) << F(",   rH%: ") << (humidity / 1000.0) << F(",   Pa: ") << (barometric_pressure / 100.0) << endl;
-
-    	int channel = 1;
-
-    	lpp.reset();
-
-    	lpp.addDigitalInput      (channel++, LoRaPlaNet_Protocol_Version);
-      
-      lpp.addVoltage           (channel++, vcc / 1000.0);
-
-      lpp.addTemperature       (channel++, temperature / 100.0);
-
-      lpp.addRelativeHumidity  (channel++, humidity / 1000.0);
-
-      lpp.addBarometricPressure(channel++, barometric_pressure / 100.0);
-
-      for (int i = 0; i < 4; i++) {
-        lpp.addVoltage         (channel++, voltage[i] / 1000.0);
-      }
-
-      for (int i = 0; i < 4; i++) {
-        uint32_t mapped = map(voltage[i], sensor_min[i], sensor_max[i], 100, 0);
-        Serial << i << F(": ") << mapped << F(",  ");
-
-        lpp.addPercentage      (channel++, mapped);
-      }
-
-      Serial << endl << F("packet-size: ") << lpp.getSize() << endl;
-
-      // Prepare upstream data transmission at the next possible time.
-      LMIC_setTxData2(1, lpp.getBuffer(), lpp.getSize(), false);
-      
-      Serial << (F("Packet queued")) << endl;
+    for (int i = 0; i < 4; i++) {
+      Serial << i << F(": ") << sensor_min[i] << (i < 3 ? F(", ") : F("\n"));
     }
-    // Next TX is scheduled after TX_COMPLETE event.
+
+    Serial << F("max: ");
+
+    for (int i = 0; i < 4; i++) {
+      Serial << i << F(": ") << sensor_max[i] << (i < 3 ? F(", ") : F("\n"));
+    }
+
+    long vcc = readVcc();
+
+    pinMode(SENSOR_POWER_PIN, OUTPUT);
+    digitalWrite(SENSOR_POWER_PIN, SENSOR_POWER_ON);
+
+    Wire.begin();
+
+    bme_init();
+
+    adc_init();
+
+    delay(200); // ensure Sensors stabilized level
+
+    int32_t temperature = bme.readFixedTempC();
+    uint32_t humidity = bme.readFixedHumidity();
+    uint32_t barometric_pressure = bme.readFixedPressure();
+
+    voltage[0] = readChannel(ADS1115_COMP_0_GND);
+    voltage[1] = readChannel(ADS1115_COMP_1_GND);
+    voltage[2] = readChannel(ADS1115_COMP_2_GND);
+    voltage[3] = readChannel(ADS1115_COMP_3_GND);
+
+    for (int i = 0; i < 4; i++) {
+      voltage[i] = (voltage[i] < V_SENSOR_MAX ? voltage[i] : 0);
+    }
+
+    digitalWrite(SENSOR_POWER_PIN, SENSOR_POWER_OFF);
+    pinMode(SENSOR_POWER_PIN, INPUT_PULLUP);
+
+    Wire.end();
+
+    for (int i = 0; i < 4; i++) {
+      Serial << i << F(": ") << voltage[i] << F(",  ");
+      Serial.flush();
+    }
+
+    Serial << F("Vcc: ") << vcc;
+    Serial << F(",   Deg C: ") << (temperature / 100.0) << F(",   rH%: ") << (humidity / 1000.0) << F(",   Pa: ") << (barometric_pressure / 100.0) << endl;
+
+  	int channel = 1;
+
+  	lpp.reset();
+
+  	lpp.addDigitalInput      (channel++, LoRaPlaNet_Protocol_Version);
+      
+    lpp.addVoltage           (channel++, vcc / 1000.0);
+
+    lpp.addTemperature       (channel++, temperature / 100.0);
+
+    lpp.addRelativeHumidity  (channel++, humidity / 1000.0);
+
+    lpp.addBarometricPressure(channel++, barometric_pressure / 100.0);
+
+    for (int i = 0; i < 4; i++) {
+      lpp.addVoltage         (channel++, voltage[i] / 1000.0);
+    }
+
+    for (int i = 0; i < 4; i++) {
+      uint32_t mapped = map(voltage[i], sensor_min[i], sensor_max[i], 100, 0);
+      Serial << i << F(": ") << mapped << F(",  ");
+      lpp.addPercentage      (channel++, mapped);
+    }
+
+    Serial << endl << F("packet-size: ") << lpp.getSize() << endl;
+
+    // Prepare upstream data transmission at the next possible time.
+    LMIC_setTxData2(1, lpp.getBuffer(), lpp.getSize(), false);
+      
+    Serial << (F("Packet queued")) << endl;
+  }
+  // Next TX is scheduled after TX_COMPLETE event.
 }
 
 /**
